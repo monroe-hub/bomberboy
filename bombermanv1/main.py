@@ -3,12 +3,14 @@ import pyautogui as pag #for manipulating player mouse
 import numpy as np
 from os import path
 
+
 class Player:
 
     def __init__(self, grid_pos):
         
         self.position = grid_pos
         self.direction = None 
+        self.visual_direction = 'down'
 
         self.health = 3
 
@@ -65,18 +67,8 @@ class Player:
             self.direction = None
         
 
-    def throw_bomb():
+    def place_bomb():
         pass
-
-def load_image(file_path):
-    #Loads an image without crashing script
-    try:
-        image = p5.load_image(file_path)
-        return image
-    except: 
-        
-        print("Error loading image")
-        return None
 
 class Map():
 
@@ -97,7 +89,7 @@ class Map():
 
                 self.coordinate_map[row_index, col_index] = (x, y)
 
-    def render_map(self):
+    def render_map(self, player):
         """This will draw a grid for the corresponding map array."""
         
 
@@ -123,12 +115,14 @@ class Map():
                     p5.pop()
 
                 elif position == 4:
+                    
+                    p5.image(bomberboy_sprites[0], x, y)
 
-                    p5.push()
-                    p5.no_stroke()
-                    p5.fill(0, 135, 135)
-                    p5.circle(x, y, tile_size)
-                    p5.pop()
+                    # p5.push()
+                    # p5.no_stroke()
+                    # p5.fill(0, 135, 135)
+                    # p5.circle(x, y, tile_size)
+                    # p5.pop()
 
     def refresh_map(self, player):
         """Recalculates map logic, updating it within the object. Requires a player object as input for various calculations."""
@@ -160,17 +154,29 @@ def generate_base_map(size=(10, 10)):
 
     return array
 
-
+def load_image(file_path):
+    #Loads an image without crashing script
+    try:
+        image = p5.load_image(file_path)
+        return image
+    except: 
+        
+        print("Error loading image")
+        return None
 
 def load_assets():
     """Attempts to load all relevant assets (images, etc.) and places them into the global namespace."""
-    global break_brick, steel_brick
+    global break_brick, steel_brick, bomberboy_sprites
 
     image_folder = path.join("bombermanv1", "assets")
     
     # print(image_folder)
     break_brick = load_image(image_folder + path.sep + "destroyable_brick.png")
     steel_brick = load_image(image_folder + path.sep + "steel_brick.png")
+
+    bomberboy_sprites = []
+    bomberboy_sprites.append(load_image(image_folder + path.sep + "bomberboy_front.png"))
+    bomberboy_sprites[0]
 
 def settings():
     p5.size(1000, 1000)
@@ -196,12 +202,13 @@ def setup():
 def draw():
     p5.background(255)
     
+    maps.refresh_map(bomberboy)
+    maps.render_map(bomberboy)
 
     #Checks to see if a move is queued
     bomberboy.try_move(active_map=maps.active_map)
 
-    maps.refresh_map(bomberboy)
-    maps.render_map()
+    
 
 def key_pressed():
 

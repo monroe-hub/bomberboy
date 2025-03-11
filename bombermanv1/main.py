@@ -14,26 +14,39 @@ class Player:
 
     def try_move(self, active_map):
 
+        rows, cols = active_map.shape
+
         if self.direction == 'up':
-            if active_map[self.position[0] - 1, self.position[1]] >= 0 and active_map[self.position[0] - 1, self.position[1]] <= active_map.shape[0]: 
-                                                                                      
-                if active_map[self.position[0] - 1, self.position[1]] == 0:
-                    self.move()
+
+            if 0 <= self.position[0] - 1 <= rows - 1:
+                if active_map[self.position[0] - 1, self.position[1]] >= 0: 
+                                                                                        
+                    if active_map[self.position[0] - 1, self.position[1]] == 0:
+                        self.move()
 
         if self.direction == 'down':
-            if active_map[self.position[0] + 1, self.position[1]] >= 0 and active_map[self.position[0] - 1, self.position[1]] <= active_map.shape[0]:
-                if active_map[self.position[0] + 1, self.position[1]] == 0:
-                    self.move()
+
+            if 0 <= self.position[0] + 1 <= rows - 1:
+                if active_map[self.position[0] + 1, self.position[1]] >= 0:
+
+                    if active_map[self.position[0] + 1, self.position[1]] == 0:
+                        self.move()
             
         if self.direction == 'right':
-            if active_map[self.position[0], self.position[1] + 1] >= 0 and active_map[self.position[0] - 1, self.position[1]] <= active_map.shape[0]:
-                if active_map[self.position[0], self.position[1] + 1] == 0:
-                    self.move()
+
+            if 0 <= self.position[1] + 1 <= cols - 1:
+                if active_map[self.position[0], self.position[1] + 1] >= 0:
+
+                    if active_map[self.position[0], self.position[1] + 1] == 0:
+                        self.move()
             
         if self.direction == 'left':
-            if active_map[self.position[0], self.position[1] - 1] >= 0 and active_map[self.position[0] - 1, self.position[1]] <= active_map.shape[0]:
-                if active_map[self.position[0], self.position[1] - 1] == 0:
-                    self.move()
+
+            if 0 <= self.position[1] - 1 <= cols - 1:
+                if active_map[self.position[0], self.position[1] - 1] >= 0:
+
+                    if active_map[self.position[0], self.position[1] - 1] == 0:
+                        self.move()
         
 
     def move(self):
@@ -130,6 +143,23 @@ class Map():
                 if (x, y) == player.position: self.active_map[x, y] = 4
                 elif self.active_map[x, y] == 4: self.active_map[x, y] = 0
 
+def generate_base_map(size=(10, 10)):
+
+    array = np.zeros(shape=size)
+
+    for row_index in range(0, array.shape[0]):
+            for col_index in range(0, array.shape[1]):
+
+                x = row_index
+                y = col_index
+
+                if x % 2 == 0 and y % 2 == 0:
+                    array[x, y] = 1
+                # elif np.random.randint(0, 1) % 1 == 0:
+                    # array[x, y] = 2
+
+    return array
+
 
 
 def load_assets():
@@ -154,7 +184,7 @@ def setup():
     p5.background(255)
 
     
-    test_map = np.random.randint(0, 3, size=(11, 13))
+    test_map = generate_base_map((11, 13))
 
     global maps
     maps = Map(test_map)

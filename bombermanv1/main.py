@@ -18,6 +18,9 @@ class Player:
 
         rows, cols = active_map.shape
 
+        if self.direction != None: self.visual_direction = self.direction
+        
+
         if self.direction == 'up':
 
             if 0 <= self.position[0] - 1 <= rows - 1:
@@ -48,10 +51,13 @@ class Player:
                 if active_map[self.position[0], self.position[1] - 1] >= 0:
 
                     if active_map[self.position[0], self.position[1] - 1] == 0:
+                        
                         self.move()
         
 
     def move(self):
+
+            # self.visual_direction = self.direction
 
             #This seems inverted, and that's because it is: numpy arrays have the origin in the top left
             
@@ -116,7 +122,16 @@ class Map():
 
                 elif position == 4:
                     
-                    p5.image(bomberboy_sprites[0], x, y)
+                    if player.visual_direction == 'down' or player.visual_direction == 'up':
+                        p5.image(bomberboy_sprites[0], x, y, self.tile_size, self.tile_size)
+                    elif player.visual_direction == 'right':
+                        p5.image(bomberboy_sprites[1], x, y, self.tile_size, self.tile_size)
+                    elif player.visual_direction == 'left':
+
+                        p5.push_matrix()
+                        p5.scale(-1 ,1)
+                        p5.image(bomberboy_sprites[1], -x, y, self.tile_size, self.tile_size)
+                        p5.pop_matrix()
 
                     # p5.push()
                     # p5.no_stroke()
@@ -176,7 +191,8 @@ def load_assets():
 
     bomberboy_sprites = []
     bomberboy_sprites.append(load_image(image_folder + path.sep + "bomberboy_front.png"))
-    bomberboy_sprites[0]
+    bomberboy_sprites.append(load_image(image_folder + path.sep + "bomberboy_side.png"))
+    # bomberboy_sprites[0]
 
 def settings():
     p5.size(1000, 1000)

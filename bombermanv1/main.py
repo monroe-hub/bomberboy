@@ -12,9 +12,11 @@ class Player:
         self.direction = None 
         self.visual_direction = 'down'
 
+        self.target_coord = None
+
         self.health = 3
 
-    def try_move(self, active_map):
+    def check_space(self, active_map):
 
         rows, cols = active_map.shape
 
@@ -27,7 +29,8 @@ class Player:
                 if active_map[self.position[0] - 1, self.position[1]] >= 0: 
                                                                                         
                     if active_map[self.position[0] - 1, self.position[1]] == 0:
-                        self.move()
+                        self.target_coord = (self.position[0] - 1, self.position[1])
+                        return True
 
         if self.direction == 'down':
 
@@ -35,7 +38,8 @@ class Player:
                 if active_map[self.position[0] + 1, self.position[1]] >= 0:
 
                     if active_map[self.position[0] + 1, self.position[1]] == 0:
-                        self.move()
+                        self.target_coord = (self.position[0] + 1, self.position[1])
+                        return True
             
         if self.direction == 'right':
 
@@ -43,7 +47,8 @@ class Player:
                 if active_map[self.position[0], self.position[1] + 1] >= 0:
 
                     if active_map[self.position[0], self.position[1] + 1] == 0:
-                        self.move()
+                        self.target_coord = (self.position[0], self.position[1] + 1)
+                        return True
             
         if self.direction == 'left':
 
@@ -51,8 +56,8 @@ class Player:
                 if active_map[self.position[0], self.position[1] - 1] >= 0:
 
                     if active_map[self.position[0], self.position[1] - 1] == 0:
-                        
-                        self.move()
+                        self.target_coord = (self.position[0], self.position[1] - 1)
+                        return True
         
 
     def move(self):
@@ -73,10 +78,27 @@ class Player:
             self.direction = None
         
 
-    def place_bomb():
-        pass
+    def place_bomb(self, active_map, bomb_list):
+        
+        if self.check_space(active_map) == True and self.target_coord != None:\
+            bomb_list.append(Bomb(self.target_coord))
 
-class Map():
+            
+
+class Bomb:
+
+    def __init__(self, grid_pos):
+
+        self.grid_pos = grid_pos
+        self.time_left = 4.0
+
+    pass
+
+        
+    
+
+
+class Map:
 
     def __init__(self, array, tile_size=64):
         
@@ -121,11 +143,13 @@ class Map():
                     p5.pop()
 
                 elif position == 4:
-                    
+
                     if player.visual_direction == 'down' or player.visual_direction == 'up':
                         p5.image(bomberboy_sprites[0], x, y, self.tile_size, self.tile_size)
+
                     elif player.visual_direction == 'right':
                         p5.image(bomberboy_sprites[1], x, y, self.tile_size, self.tile_size)
+
                     elif player.visual_direction == 'left':
 
                         p5.push_matrix()
@@ -133,13 +157,16 @@ class Map():
                         p5.image(bomberboy_sprites[1], -x, y, self.tile_size, self.tile_size)
                         p5.pop_matrix()
 
-                    # p5.push()
-                    # p5.no_stroke()
-                    # p5.fill(0, 135, 135)
-                    # p5.circle(x, y, tile_size)
-                    # p5.pop()
+                elif position == 5:
 
-    def refresh_map(self, player):
+                    p5.push()
+                    p5.fill(0)
+                    p5.circle(x, y, self.tile_size)
+                    p5.pop()
+
+                    
+
+    def refresh_map(self, player, bomb_list):
         """Recalculates map logic, updating it within the object. Requires a player object as input for various calculations."""
 
 
@@ -151,6 +178,10 @@ class Map():
 
                 if (x, y) == player.position: self.active_map[x, y] = 4
                 elif self.active_map[x, y] == 4: self.active_map[x, y] = 0
+
+                for bomb in bomb_list:
+                    if bomb.grid_pos == (x, y):
+                        self.active_map[x, y] = 5
 
 def generate_base_map(size=(10, 10)):
 
@@ -209,20 +240,23 @@ def setup():
     test_map = generate_base_map((11, 13))
 
     global maps
+    #This is where you should change file_size
     maps = Map(test_map)
 
     global bomberboy
     bomberboy = Player((1, 1))
-    # active_map[bomberboy.position[0], bomberboy.position[1]] = 4
+    
+    global bomb_list
+    bomb_list = []
 
 def draw():
     p5.background(255)
     
-    maps.refresh_map(bomberboy)
+    maps.refresh_map(bomberboy, bomb_list=bomb_list)
     maps.render_map(bomberboy)
 
     #Checks to see if a move is queued
-    bomberboy.try_move(active_map=maps.active_map)
+    
 
     
 
@@ -231,23 +265,42 @@ def key_pressed():
     key = str(p5.key).lower()
 
     # print(key)
-
+    
     if key == 'w': 
-        bomberboy.direction = 'up'
-    elif key == 's': 
-        bomberboy.direction = 'down'
-    elif key == 'd': 
-        bomberboy.direction = 'right'
-    elif key == 'a': 
-        bomberboy.direction = 'left'
 
+        bomberboy.direction = 'up'
+        #Checks if the move entering a valid space
+        if bomberboy.check_space(active_map=maps.active_map):
+            bomberboy.move()
+    elif key == 's': 
+
+        bomberboy.direction = 'down'
+        if bomberboy.check_space(active_map=maps.active_map):
+            bomberboy.move()
+    elif key == 'd': 
+
+        bomberboy.direction = 'right'
+        if bomberboy.check_space(active_map=maps.active_map):
+            bomberboy.move()
+    elif key == 'a': 
+
+        bomberboy.direction = 'left'
+        if bomberboy.check_space(active_map=maps.active_map):
+            bomberboy.move()
+
+    elif key == ' ':
+        
+        if bomberboy.check_space(active_map=maps.active_map):
+            bomberboy.place_bomb(active_map=maps.active_map, bomb_list=bomb_list)
+    
     #Debug statement, keep in mind that the coordinate here will not be updated yet
-    # print(f"Keypress: {key} Direction: {bomberboy.direction} Coordinate: {bomberboy.position}")
+    print(f"Keypress: |{key}| Direction: {bomberboy.direction} Coordinate: {bomberboy.position}")
+    print(len(bomb_list))
 
 
         
 
     
-
+#Maybe players should have an active_map attribute they can look at?
 
 p5.run_sketch()

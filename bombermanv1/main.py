@@ -6,81 +6,88 @@ from os import path
 
 class Player:
 
-    def __init__(self, grid_pos):
+    def __init__(self, grid_pos, active_map):
         
+        self.active_map = active_map
+
         self.position = grid_pos
         self.direction = None 
         self.visual_direction = 'down'
 
         self.target_coord = None
+        self.check_space()
+
 
         self.health = 3
 
-    def check_space(self, active_map):
+    def check_space(self):
 
-        rows, cols = active_map.shape
-
-        if self.direction != None: self.visual_direction = self.direction
-        
+        rows, cols = self.active_map.shape
 
         if self.direction == 'up':
 
             if 0 <= self.position[0] - 1 <= rows - 1:
-                if active_map[self.position[0] - 1, self.position[1]] >= 0: 
                                                                                         
-                    if active_map[self.position[0] - 1, self.position[1]] == 0:
+                    if self.active_map[self.position[0] - 1, self.position[1]] == 0:
+
                         self.target_coord = (self.position[0] - 1, self.position[1])
-                        return True
+                        
 
         if self.direction == 'down':
 
             if 0 <= self.position[0] + 1 <= rows - 1:
-                if active_map[self.position[0] + 1, self.position[1]] >= 0:
 
-                    if active_map[self.position[0] + 1, self.position[1]] == 0:
+                    if self.active_map[self.position[0] + 1, self.position[1]] == 0:
+
                         self.target_coord = (self.position[0] + 1, self.position[1])
-                        return True
+                        
             
         if self.direction == 'right':
 
             if 0 <= self.position[1] + 1 <= cols - 1:
-                if active_map[self.position[0], self.position[1] + 1] >= 0:
 
-                    if active_map[self.position[0], self.position[1] + 1] == 0:
+                    if self.active_map[self.position[0], self.position[1] + 1] == 0:
+
                         self.target_coord = (self.position[0], self.position[1] + 1)
-                        return True
+                        
             
         if self.direction == 'left':
 
             if 0 <= self.position[1] - 1 <= cols - 1:
-                if active_map[self.position[0], self.position[1] - 1] >= 0:
 
-                    if active_map[self.position[0], self.position[1] - 1] == 0:
+                    if self.active_map[self.position[0], self.position[1] - 1] == 0:
                         self.target_coord = (self.position[0], self.position[1] - 1)
-                        return True
+                        
+                    
         
 
     def move(self):
+        # if self.direction != None: self.visual_direction = self.direction
 
-            # self.visual_direction = self.direction
+        # self.check_space()
 
-            #This seems inverted, and that's because it is: numpy arrays have the origin in the top left
-            
-            if self.direction == 'up': 
-                self.position = (self.position[0] - 1, self.position[1])
-            elif self.direction == 'down': 
-                self.position = (self.position[0] + 1, self.position[1])
-            elif self.direction == 'right': 
-                self.position = (self.position[0], self.position[1] + 1)
-            elif self.direction == 'left': 
-                self.position = (self.position[0], self.position[1] - 1)
-                
-            self.direction = None
+        # if self.visual_direction == self.direction and self.target_coord is not None:
+
+        #     self.position = self.target_coord
+        # else: 
+        #     self.visual_direction = self.visual_direction
+
+        # self.check_space()
+        # self.direction = None
+
+        self.check_space()
+
+        # Allow movement only if the direction is valid and the target is not None
+        if self.direction is not None and self.target_coord is not None:
+            self.position = self.target_coord
+            self.visual_direction = self.direction  # Update visual direction only after movement
+
+        self.direction = None  # Reset movement after processing
         
 
-    def place_bomb(self, active_map, bomb_list):
-        
-        if self.check_space(active_map) == True and self.target_coord != None:\
+    def place_bomb(self, bomb_list):
+
+        if self.target_coord != None and self.active_map[self.target_coord] == 0:\
             bomb_list.append(Bomb(self.target_coord))
 
             
@@ -193,8 +200,9 @@ def generate_base_map(size=(10, 10)):
                 x = row_index
                 y = col_index
 
-                if x % 2 == 0 and y % 2 == 0:
+                if x % 2 != 0 and y % 2 != 0:
                     array[x, y] = 1
+
                 # elif np.random.randint(0, 1) % 1 == 0:
                     # array[x, y] = 2
 
@@ -244,7 +252,7 @@ def setup():
     maps = Map(test_map)
 
     global bomberboy
-    bomberboy = Player((1, 1))
+    bomberboy = Player((0, 0), maps.active_map)
     
     global bomb_list
     bomb_list = []
@@ -254,53 +262,44 @@ def draw():
     
     maps.refresh_map(bomberboy, bomb_list=bomb_list)
     maps.render_map(bomberboy)
-
-    #Checks to see if a move is queued
-    
-
-    
+  
 
 def key_pressed():
 
     key = str(p5.key).lower()
-
-    # print(key)
     
     if key == 'w': 
 
         bomberboy.direction = 'up'
         #Checks if the move entering a valid space
-        if bomberboy.check_space(active_map=maps.active_map):
-            bomberboy.move()
+
     elif key == 's': 
 
         bomberboy.direction = 'down'
-        if bomberboy.check_space(active_map=maps.active_map):
-            bomberboy.move()
+
     elif key == 'd': 
 
         bomberboy.direction = 'right'
-        if bomberboy.check_space(active_map=maps.active_map):
-            bomberboy.move()
+
     elif key == 'a': 
 
         bomberboy.direction = 'left'
-        if bomberboy.check_space(active_map=maps.active_map):
-            bomberboy.move()
 
     elif key == ' ':
         
-        if bomberboy.check_space(active_map=maps.active_map):
-            bomberboy.place_bomb(active_map=maps.active_map, bomb_list=bomb_list)
+        bomberboy.place_bomb(bomb_list=bomb_list)
+        return
     
+    #Default action is movement if not bomb
+
+    bomberboy.move()
+    
+
+
+
+
     #Debug statement, keep in mind that the coordinate here will not be updated yet
-    print(f"Keypress: |{key}| Direction: {bomberboy.direction} Coordinate: {bomberboy.position}")
-    print(len(bomb_list))
-
-
-        
-
-    
-#Maybe players should have an active_map attribute they can look at?
+    # print(f"Keypress: |{key}| Direction: {bomberboy.direction} Coordinate: {bomberboy.position}")
+    # print(bomberboy.target_coord, len(bomb_list))
 
 p5.run_sketch()

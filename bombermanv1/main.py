@@ -108,12 +108,14 @@ class Map:
 
     def __init__(self, array, tile_size=64):
         
-        self.init_coords = [100, 100]
+        
         self.array = array
         self.tile_size = tile_size
 
         self.coordinate_map = np.empty(shape=self.array.shape, dtype=object)
         self.active_map = np.copy(self.array)
+
+        self.init_coords = [p5.width/4 + 50, p5.height/8 + 50]
 
         for row_index in range(0, array.shape[0]):
             for col_index in range(0, array.shape[1]):
@@ -126,7 +128,6 @@ class Map:
     def render_map(self, player):
         """This will draw a grid for the corresponding map array."""
         
-
         for row_index, row_values in enumerate(self.active_map):
             for col_index, position in enumerate(row_values):
                 #I know that every tile_size should be a self but I'm lazy
@@ -151,16 +152,16 @@ class Map:
                 elif position == 4:
 
                     if player.visual_direction == 'down' or player.visual_direction == 'up':
-                        p5.image(bomberboy_sprites[0], x, y, self.tile_size, self.tile_size)
+                        p5.image(dave_sprites[0], x, y, self.tile_size, self.tile_size)
 
                     elif player.visual_direction == 'right':
-                        p5.image(bomberboy_sprites[1], x, y, self.tile_size, self.tile_size)
+                        p5.image(dave_sprites[1], x, y, self.tile_size, self.tile_size)
 
                     elif player.visual_direction == 'left':
 
                         p5.push_matrix()
                         p5.scale(-1 ,1)
-                        p5.image(bomberboy_sprites[1], -x, y, self.tile_size, self.tile_size)
+                        p5.image(dave_sprites[1], -x, y, self.tile_size, self.tile_size)
                         p5.pop_matrix()
 
                 elif position == 5:
@@ -264,7 +265,7 @@ def generate_base_map(size=(10, 10)):
                 if x % 2 != 0 and y % 2 != 0:
                     array[x, y] = 1
 
-                elif np.random.randint(0, 6) % 2 == 0:
+                elif np.random.randint(0, 6) % 2 == 0 and p5.dist(x, y, 1, 1) >= 2:
                     array[x, y] = 2
 
     return array
@@ -281,7 +282,7 @@ def load_image(file_path):
 
 def load_assets():
     """Attempts to load all relevant assets (images, etc.) and places them into the global namespace."""
-    global break_brick, steel_brick, bomberboy_sprites
+    global break_brick, steel_brick, dave_sprites
 
     image_folder = path.join("bombermanv1", "assets")
     
@@ -289,13 +290,13 @@ def load_assets():
     break_brick = load_image(image_folder + path.sep + "destroyable_brick.png")
     steel_brick = load_image(image_folder + path.sep + "steel_brick.png")
 
-    bomberboy_sprites = []
-    bomberboy_sprites.append(load_image(image_folder + path.sep + "bomberboy_front.png"))
-    bomberboy_sprites.append(load_image(image_folder + path.sep + "bomberboy_side.png"))
+    dave_sprites = []
+    dave_sprites.append(load_image(image_folder + path.sep + "bomberboy_front.png"))
+    dave_sprites.append(load_image(image_folder + path.sep + "bomberboy_side.png"))
     # bomberboy_sprites[0]
 
 def settings():
-    p5.size(1000, 1000)
+    p5.size(1200, 1000)
     #board size (800x800?)
 
 def setup():
@@ -310,10 +311,10 @@ def setup():
 
     global maps
     #This is where you should change file_size
-    maps = Map(test_map)
+    maps = Map(test_map, 64)
 
-    global bomberboy
-    bomberboy = Player((0, 0), maps.active_map)
+    global dynamite_dave
+    dynamite_dave = Player((0, 0), maps.active_map)
     
     global bomb_list
     bomb_list = []
@@ -322,8 +323,8 @@ def setup():
 def draw():
     p5.background(255)
     
-    maps.refresh_map(bomberboy, bomb_list=bomb_list)
-    maps.render_map(bomberboy)
+    maps.refresh_map(dynamite_dave, bomb_list=bomb_list)
+    maps.render_map(dynamite_dave)
 
     
     
@@ -335,28 +336,28 @@ def key_pressed():
     
     if key == 'w': 
 
-        bomberboy.direction = 'up'
+        dynamite_dave.direction = 'up'
         #Checks if the move entering a valid space
-        bomberboy.move()
+        dynamite_dave.move()
 
     elif key == 's': 
 
-        bomberboy.direction = 'down'
-        bomberboy.move()
+        dynamite_dave.direction = 'down'
+        dynamite_dave.move()
 
     elif key == 'd': 
 
-        bomberboy.direction = 'right'
-        bomberboy.move()
+        dynamite_dave.direction = 'right'
+        dynamite_dave.move()
 
     elif key == 'a': 
 
-        bomberboy.direction = 'left'
-        bomberboy.move()
+        dynamite_dave.direction = 'left'
+        dynamite_dave.move()
 
     elif key == ' ':
         
-        bomberboy.place_bomb(bomb_list=bomb_list)
+        dynamite_dave.place_bomb(bomb_list=bomb_list)
         return
     
     #Debug statement, keep in mind that the coordinate here will not be updated yet

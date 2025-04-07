@@ -15,8 +15,6 @@ class Player:
         self.visual_direction = 'down'
 
         self.target_coord = None
-        # self.check_space()
-
 
         self.health = 3
 
@@ -83,7 +81,73 @@ class Player:
         if self.target_coord != None and self.active_map[self.target_coord] == 0:\
             bomb_list.append(Bomb(self.target_coord))
 
+class Enemy:
+
+    def __init__(self, grid_pos, active_map):
+        
+        self.active_map = active_map
+
+        self.position = grid_pos
+        self.direction = None 
+        self.visual_direction = 'down'
+
+        self.target_coord = None
+
+        self.health = 3
+
+    def check_space(self):
+
+        rows, cols = self.active_map.shape
+
+        if self.direction == 'up':
+
+            if 0 <= self.position[0] - 1 <= rows - 1:
+                                                                                        
+                    if self.active_map[self.position[0] - 1, self.position[1]] == 0:
+
+                        self.target_coord = (self.position[0] - 1, self.position[1])
+                        
+
+        if self.direction == 'down':
+
+            if 0 <= self.position[0] + 1 <= rows - 1:
+
+                    if self.active_map[self.position[0] + 1, self.position[1]] == 0:
+
+                        self.target_coord = (self.position[0] + 1, self.position[1])
+                        
             
+        if self.direction == 'right':
+
+            if 0 <= self.position[1] + 1 <= cols - 1:
+
+                    if self.active_map[self.position[0], self.position[1] + 1] == 0:
+
+                        self.target_coord = (self.position[0], self.position[1] + 1)
+                        
+            
+        if self.direction == 'left':
+
+            if 0 <= self.position[1] - 1 <= cols - 1:
+
+                    if self.active_map[self.position[0], self.position[1] - 1] == 0:
+                        self.target_coord = (self.position[0], self.position[1] - 1)
+                        
+    def move(self):
+        # if self.direction != None: self.visual_direction = self.direction
+
+        self.check_space()
+
+        if self.visual_direction == self.direction:
+
+            self.position = self.target_coord
+            self.check_space()
+
+        else: 
+            self.visual_direction = self.direction
+
+        
+        self.direction = None     
 
 class Bomb:
 
@@ -123,33 +187,40 @@ class Map:
                 x = self.init_coords[0] + col_index * tile_size
                 y = self.init_coords[1] + row_index * tile_size
 
-                self.coordinate_map[row_index, col_index] = (x, y)
+                self.coordinate_map[row_index, col_index] = (x, y)        
 
     def render_map(self, player):
         """This will draw a grid for the corresponding map array."""
         
         for row_index, row_values in enumerate(self.active_map):
             for col_index, position in enumerate(row_values):
-                #I know that every tile_size should be a self but I'm lazy
-                tile_size = self.tile_size
 
-                x = self.init_coords[0] + col_index * tile_size
-                y = self.init_coords[1] + row_index * tile_size
+                x = self.init_coords[0] + col_index * self.tile_size
+                y = self.init_coords[1] + row_index * self.tile_size
 
-                if position == 1:
-                    p5.image(steel_brick, x, y, tile_size, tile_size)
+                #TODO: Decide if converting the array to an object array is worthwhile.
+                #If int, convert to list for iterating
+                # values = [position] if isinstance(position, int) else position
 
-                elif position == 2:
+                # for value in values:
+                    #Draws objects based on the values saved within a particular coordinate
+
+                value = position
+
+                if value == 1:
+                    p5.image(steel_brick, x, y, self.tile_size, self.tile_size)
+
+                elif value == 2:
                     
-                    p5.image(break_brick, x, y, tile_size, tile_size)
+                    p5.image(break_brick, x, y, self.tile_size, self.tile_size)
 
-                elif position == 3:
+                elif value == 3:
                     p5.push()
                     p5.fill(0)
-                    p5.square(x, y, tile_size)
+                    p5.square(x, y, self.tile_size)
                     p5.pop()
 
-                elif position == 4:
+                elif value == 4:
 
                     if player.visual_direction == 'down' or player.visual_direction == 'up':
                         p5.image(dave_sprites[0], x, y, self.tile_size, self.tile_size)
@@ -164,13 +235,13 @@ class Map:
                         p5.image(dave_sprites[1], -x, y, self.tile_size, self.tile_size)
                         p5.pop_matrix()
 
-                elif position == 5:
+                elif value == 5:
                     
-                    # for bomb in bomb_list:
-                        # if bomb.grid_pos == (x, y):
+                    for bomb in bomb_list:
+                        
+                        if bomb.grid_pos == (row_index, col_index):
 
                             # progress = p5.constrain((p5.millis() - bomb.spawn_time) / bomb.time_left, 0, 1)
-
                             
                             p5.push()
 
@@ -180,6 +251,20 @@ class Map:
                             p5.fill(0)
                             p5.circle(x, y, self.tile_size)
                             p5.pop()
+
+                elif value == 6:
+
+                    for enemy in enemy_list:
+                        
+                        if enemy.position == (row_index, col_index):
+                        
+                            p5.push()
+
+                            p5.fill(255, 0, 0)
+                            p5.circle(x, y, self.tile_size)
+                            p5.pop()
+
+
 
     def draw_border(self):
 
@@ -200,7 +285,11 @@ class Map:
                 elif self.active_map[x, y] == 4: self.active_map[x, y] = 0
 
                 for i, bomb in enumerate(bomb_list):
+                    
                     if bomb.grid_pos == (x, y):
+
+                        # print(bomb.grid_pos, x, y, sep=" ")
+
                         self.active_map[x, y] = 5
 
                         if bomb.explosion_check():
@@ -233,7 +322,7 @@ class Map:
                                     if self.active_map[x, y + i] == 4: player.health -= 1
                                     
                                     self.active_map[x, y + i] = 0
-                                    p5.circle(self.coordinate_map[x , y + i][0], self.coordinate_map[x, y + i][0], self.tile_size)
+                                    p5.circle(self.coordinate_map[x , y + i][0], self.coordinate_map[x, y + i][1], self.tile_size)
 
                                 
 
@@ -242,7 +331,7 @@ class Map:
                                     if self.active_map[x, y - i] == 4: player.health -= 1
 
                                     self.active_map[x, y - i] = 0
-                                    p5.circle(self.coordinate_map[x, y - i][0], self.coordinate_map[x, y - i][0], self.tile_size)
+                                    p5.circle(self.coordinate_map[x, y - i][0], self.coordinate_map[x, y - i][1], self.tile_size)
 
                                 if self.active_map[x, y] != 1:
                                     self.active_map[x, y] = 0
@@ -255,6 +344,7 @@ class Map:
 def generate_base_map(size=(10, 10)):
 
     array = np.zeros(shape=size)
+    enemy_coordinates = []
 
     for row_index in range(0, array.shape[0]):
             for col_index in range(0, array.shape[1]):
@@ -262,13 +352,22 @@ def generate_base_map(size=(10, 10)):
                 x = row_index
                 y = col_index
 
+                if p5.dist(x, y, 1, 1) >= 2: spawn_safe = True
+                else: spawn_safe = False
+
                 if x % 2 != 0 and y % 2 != 0:
                     array[x, y] = 1
 
-                elif np.random.randint(0, 6) % 2 == 0 and p5.dist(x, y, 1, 1) >= 2:
+                elif np.random.randint(0, 6) % 2 == 0 and spawn_safe:
                     array[x, y] = 2
 
-    return array
+                if stage == 1 and spawn_safe and array[x, y] == 0:
+
+                    if p5.random_int(1, 5) == 5:
+                        array[x, y] = 6
+                        enemy_coordinates.append((x, y))
+
+    return array, enemy_coordinates
 
 def load_image(file_path):
     #Loads an image without crashing script
@@ -306,11 +405,16 @@ def setup():
     load_assets()
     p5.background(255)
 
-    
-    test_map = generate_base_map((11, 13))
+    global stage
+    stage = 1
+
+    returns = generate_base_map((11, 13))
+
+    test_map = returns[0]
+    enemy_coordinates = returns[1]
 
     global maps
-    #This is where you should change file_size
+    #This is where you should change tile_size
     maps = Map(test_map, 64)
 
     global dynamite_dave
@@ -319,6 +423,14 @@ def setup():
     global bomb_list
     bomb_list = []
 
+    global enemy_list 
+    enemy_list = []
+
+    for enemy_coords in enemy_coordinates:
+        enemy_list.append(Enemy(enemy_coords, active_map=maps.active_map))
+
+    
+
 
 def draw():
     p5.background(255)
@@ -326,9 +438,6 @@ def draw():
     maps.refresh_map(dynamite_dave, bomb_list=bomb_list)
     maps.render_map(dynamite_dave)
 
-    
-    
-  
 
 def key_pressed():
 

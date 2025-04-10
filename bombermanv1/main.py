@@ -2,6 +2,7 @@ import py5 as p5
 import pyautogui as pag #for manipulating player mouse
 import numpy as np
 from os import path
+from abc import ABC, abstractmethod
 
 
 class Player:
@@ -60,20 +61,23 @@ class Player:
         
 
     def move(self):
-        # if self.direction != None: self.visual_direction = self.direction
-
         self.check_space()
 
+        #If not facing the correct direction, updates visual direction
+        if self.visual_direction != self.direction:
+            self.visual_direction = self.direction
+            if self.target_coord == None: return
+            else: return
+
+        #If move was invalid, refuses move
         if self.visual_direction == self.direction:
+
+            if self.target_coord == None: return
 
             self.position = self.target_coord
             self.check_space()
-
-        else: 
-            self.visual_direction = self.direction
-
         
-        self.direction = None
+        self.direction = None    
         
 
     def place_bomb(self, bomb_list):
@@ -81,9 +85,9 @@ class Player:
         if self.target_coord != None and self.active_map[self.target_coord] == 0:\
             bomb_list.append(Bomb(self.target_coord))
 
-class Enemy:
+class Enemy(ABC):
 
-    def __init__(self, grid_pos, active_map):
+    def __init__(self, grid_pos, active_map, type=(6, 'crab')):
         
         self.active_map = active_map
 
@@ -95,6 +99,14 @@ class Enemy:
 
         self.health = 3
 
+        self.type = type
+        self.action = None
+
+    @abstractmethod
+    def decide_action(self):
+        pass
+        
+    @abstractmethod
     def check_space(self):
 
         rows, cols = self.active_map.shape
@@ -132,22 +144,58 @@ class Enemy:
 
                     if self.active_map[self.position[0], self.position[1] - 1] == 0:
                         self.target_coord = (self.position[0], self.position[1] - 1)
-                        
+
+    @abstractmethod      
     def move(self):
         # if self.direction != None: self.visual_direction = self.direction
 
         self.check_space()
 
+        #If not facing the correct direction, updates visual direction
+        if self.visual_direction != self.direction:
+            self.visual_direction = self.direction
+            if self.target_coord == None: return
+            else: return
+
+        #If move was invalid, refuses move
         if self.visual_direction == self.direction:
+
+            if self.target_coord == None: return
 
             self.position = self.target_coord
             self.check_space()
+        
+        self.direction = None    
 
+class Crab(Enemy):
+
+    def __init__(self, grid_pos, active_map):
+        super().__init__(grid_pos, active_map, type=(6, 'crab'))
+
+    def decide_action(self):
+        directions = ['up', 'down', 'left', 'right']
+        seed = p5.random_int(1, 3)
+
+        if seed < 3:
+            self.action = None
         else: 
-            self.visual_direction = self.direction
+            self.action = 'move'
+            self.direction = directions[p5.random_int(0, 3)]
+            
+
+    def check_space(self):
+        return super().check_space()
+        
+
+    def move(self):
+        return super().move()
+
+    
+
+    
 
         
-        self.direction = None     
+
 
 class Bomb:
 
@@ -265,13 +313,12 @@ class Map:
                             p5.pop()
 
 
-
     def draw_border(self):
 
         #TODO: this will draw a layer of uninteractable steel bricks (1) around the map
         pass
 
-    def refresh_map(self, player, bomb_list):
+    def refresh_map(self, player, bomb_list, enemy_list):
         """Recalculates map logic, updating it within the object. Requires a player object as input for various calculations."""
 
 
@@ -283,6 +330,22 @@ class Map:
 
                 if (x, y) == player.position: self.active_map[x, y] = 4
                 elif self.active_map[x, y] == 4: self.active_map[x, y] = 0
+
+                for i, enemy in enumerate(enemy_list):
+
+                    if enemy.position == (x, y):
+
+                        self.active_map[x, y] = enemy.type[0]
+
+                    enemy.decide_action()
+
+                    if enemy.action == 'move':
+                        # print(enemy.position)
+                        #TODO: This needs to choose a direction and move
+                        if enemy.position != None:
+                            enemy.move()
+
+
 
                 for i, bomb in enumerate(bomb_list):
                     
@@ -427,7 +490,7 @@ def setup():
     enemy_list = []
 
     for enemy_coords in enemy_coordinates:
-        enemy_list.append(Enemy(enemy_coords, active_map=maps.active_map))
+        enemy_list.append(Crab(enemy_coords, active_map=maps.active_map))
 
     
 
@@ -435,7 +498,7 @@ def setup():
 def draw():
     p5.background(255)
     
-    maps.refresh_map(dynamite_dave, bomb_list=bomb_list)
+    maps.refresh_map(dynamite_dave, bomb_list=bomb_list, enemy_list=enemy_list)
     maps.render_map(dynamite_dave)
 
 

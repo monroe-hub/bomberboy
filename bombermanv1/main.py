@@ -102,6 +102,11 @@ class Enemy(ABC):
         self.type = type
         self.action = None
 
+        
+
+        
+
+
     @abstractmethod
     def decide_action(self):
         pass
@@ -154,7 +159,10 @@ class Enemy(ABC):
         #If not facing the correct direction, updates visual direction
         if self.visual_direction != self.direction:
             self.visual_direction = self.direction
+
+            #Target coord can begin uninitialized; this handles that
             if self.target_coord == None: return
+
             else: return
 
         #If move was invalid, refuses move
@@ -172,30 +180,61 @@ class Crab(Enemy):
     def __init__(self, grid_pos, active_map):
         super().__init__(grid_pos, active_map, type=(6, 'crab'))
 
-    def decide_action(self):
-        directions = ['up', 'down', 'left', 'right']
-        seed = p5.random_int(1, 3)
+        self.last_move_time = p5.millis()
+        self.move_delay = 1000  # milliseconds between moves (1 second)
 
-        if seed < 3:
-            self.action = None
-        else: 
-            self.action = 'move'
-            self.direction = directions[p5.random_int(0, 3)]
+        side_spaces = 0
+        up_spaces = 0
+
+        for x in range(-1, 1):
+
+            if self.active_map[grid_pos[0] + x, grid_pos[1]] == 0:
+
+                side_spaces += 1
+
+        for y in range(-1, 1):
+
+            if self.active_map[grid_pos[0], grid_pos[1] + y] == 0:
+
+                up_spaces += 1
+
+        if side_spaces >= up_spaces:
+
+            self.crab_walk = 'horizontal'
+        else:
+            self.crab_walk = 'vertical'
+
+    def decide_action(self):
+
+        if self.crab_walk == 'horizontal':
+            directions = ['left', 'right']
+        if self.crab_walk == 'vertical':
+            directions = ['up', 'down']
+
+
+        #This checks if a half second has passed since the last move
+        current_time = p5.millis()
+
+        if current_time - self.last_move_time < self.move_delay:
+            self.action = None  # Wait
+            return
+        else:
+
+            seed = p5.random_int(1, 3)
+
+            if seed < 3:
+                self.action = None
+            else: 
+                self.action = 'move'
+                self.direction = directions[p5.random_int(0, 1)]
             
 
     def check_space(self):
         return super().check_space()
         
-
     def move(self):
+        self.last_move_time = p5.millis()
         return super().move()
-
-    
-
-    
-
-        
-
 
 class Bomb:
 
@@ -255,18 +294,25 @@ class Map:
 
                 value = position
 
+                #Text color
+                p5.fill(0)
+
                 if value == 1:
                     p5.image(steel_brick, x, y, self.tile_size, self.tile_size)
+                    p5.text("1", x, y)
 
                 elif value == 2:
                     
                     p5.image(break_brick, x, y, self.tile_size, self.tile_size)
+                    p5.text("2", x, y)
 
                 elif value == 3:
                     p5.push()
                     p5.fill(0)
                     p5.square(x, y, self.tile_size)
                     p5.pop()
+
+                    p5.text("3", x, y)
 
                 elif value == 4:
 
@@ -282,6 +328,8 @@ class Map:
                         p5.scale(-1 ,1)
                         p5.image(dave_sprites[1], -x, y, self.tile_size, self.tile_size)
                         p5.pop_matrix()
+
+                    p5.text("4", x, y)
 
                 elif value == 5:
                     
@@ -300,6 +348,8 @@ class Map:
                             p5.circle(x, y, self.tile_size)
                             p5.pop()
 
+                    p5.text("5", x, y)
+
                 elif value == 6:
 
                     for enemy in enemy_list:
@@ -308,9 +358,12 @@ class Map:
                         
                             p5.push()
 
-                            p5.fill(255, 0, 0)
-                            p5.circle(x, y, self.tile_size)
+                            p5.image(crab_sprite, x, y, self.tile_size, self.tile_size)
+                            # p5.fill(255, 0, 0)
+                            # p5.circle(x, y, self.tile_size)
                             p5.pop()
+
+                    p5.text("6", x, y)
 
 
     def draw_border(self):
@@ -340,10 +393,16 @@ class Map:
                     enemy.decide_action()
 
                     if enemy.action == 'move':
-                        # print(enemy.position)
-                        #TODO: This needs to choose a direction and move
+
                         if enemy.position != None:
+
+                            previous_pos = enemy.position
                             enemy.move()
+
+                            #Do not clear if still
+                            if enemy.position != previous_pos:
+
+                                self.active_map[previous_pos[0], previous_pos[1]] = 0
 
 
 
@@ -444,7 +503,7 @@ def load_image(file_path):
 
 def load_assets():
     """Attempts to load all relevant assets (images, etc.) and places them into the global namespace."""
-    global break_brick, steel_brick, dave_sprites
+    global break_brick, steel_brick, dave_sprites, crab_sprite
 
     image_folder = path.join("bombermanv1", "assets")
     
@@ -455,15 +514,20 @@ def load_assets():
     dave_sprites = []
     dave_sprites.append(load_image(image_folder + path.sep + "bomberboy_front.png"))
     dave_sprites.append(load_image(image_folder + path.sep + "bomberboy_side.png"))
-    # bomberboy_sprites[0]
+
+
+    crab_sprite = load_image(image_folder + path.sep + "crab.png")
 
 def settings():
     p5.size(1200, 1000)
+
     #board size (800x800?)
 
 def setup():
     p5.rect_mode(p5.CENTER)
     p5.image_mode(p5.CENTER)
+
+    # p5.frame_rate(2)
 
     load_assets()
     p5.background(255)

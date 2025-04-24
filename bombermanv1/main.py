@@ -123,7 +123,7 @@ class Enemy(ABC):
                     if self.active_map[self.position[0] - 1, self.position[1]] == 0:
 
                         self.target_coord = (self.position[0] - 1, self.position[1])
-                        
+            
 
         if self.direction == 'down':
 
@@ -317,6 +317,7 @@ class Map:
                 elif value == 4:
 
                     if player.visual_direction == 'down' or player.visual_direction == 'up':
+
                         p5.image(dave_sprites[0], x, y, self.tile_size, self.tile_size)
 
                     elif player.visual_direction == 'right':
@@ -337,14 +338,14 @@ class Map:
                         
                         if bomb.grid_pos == (row_index, col_index):
 
-                            # progress = p5.constrain((p5.millis() - bomb.spawn_time) / bomb.time_left, 0, 1)
+                            progress = p5.constrain((p5.millis() - bomb.spawn_time) / bomb.time_left, 0, 1)
                             
                             p5.push()
 
                             #TODO: make the color shift start working
-                            # p5.fill(255 * progress, 0, 0)
+                            p5.fill(255 * progress, 0, 0)
                             
-                            p5.fill(0)
+                            # p5.fill(0)
                             p5.circle(x, y, self.tile_size)
                             p5.pop()
 
@@ -404,8 +405,6 @@ class Map:
 
                                 self.active_map[previous_pos[0], previous_pos[1]] = 0
 
-
-
                 for i, bomb in enumerate(bomb_list):
                     
                     if bomb.grid_pos == (x, y):
@@ -446,7 +445,7 @@ class Map:
                                     self.active_map[x, y + i] = 0
                                     p5.circle(self.coordinate_map[x , y + i][0], self.coordinate_map[x, y + i][1], self.tile_size)
 
-                                
+                    
 
                                 if self.active_map[x, y - i] != 1 and (0 <= y - i <= self.active_map.shape[1] - 1):
 
@@ -462,6 +461,14 @@ class Map:
                                 p5.pop()
 
                             bomb_list.pop(i-1)
+
+    def render_hud(self, player):
+
+        for i in range(0, player.health):
+            p5.push()
+            p5.image(heart_image, p5.width/8 + (i * self.tile_size), p5.height/8, self.tile_size, self.tile_size)
+            p5.pop()
+
 
 def generate_base_map(size=(10, 10)):
 
@@ -503,7 +510,7 @@ def load_image(file_path):
 
 def load_assets():
     """Attempts to load all relevant assets (images, etc.) and places them into the global namespace."""
-    global break_brick, steel_brick, dave_sprites, crab_sprite
+    global break_brick, steel_brick, dave_sprites, crab_sprite, heart_image
 
     image_folder = path.join("bombermanv1", "assets")
     
@@ -517,6 +524,8 @@ def load_assets():
 
 
     crab_sprite = load_image(image_folder + path.sep + "crab.png")
+
+    heart_image = load_image(image_folder + path.sep + "heart.png")
 
 def settings():
     p5.size(1200, 1000)
@@ -564,6 +573,11 @@ def draw():
     
     maps.refresh_map(dynamite_dave, bomb_list=bomb_list, enemy_list=enemy_list)
     maps.render_map(dynamite_dave)
+    maps.render_hud(dynamite_dave)
+
+    #TODO: dave must make movements every couple of frames, with his actions delayed until the first one completes.
+    #Do this through internal object timers.
+    #player.action_delay
 
 
 def key_pressed():

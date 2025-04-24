@@ -7,9 +7,10 @@ from abc import ABC, abstractmethod
 
 class Player:
 
-    def __init__(self, grid_pos, active_map):
+    def __init__(self, grid_pos, active_map, coordinate_map, size):
         
         self.active_map = active_map
+        self.coordinate_map = coordinate_map
 
         self.position = grid_pos
         self.direction = None 
@@ -18,6 +19,9 @@ class Player:
         self.target_coord = None
 
         self.health = 3
+        self.size = size
+
+        self.action_queue = []
 
     def check_space(self):
 
@@ -57,11 +61,12 @@ class Player:
                     if self.active_map[self.position[0], self.position[1] - 1] == 0:
                         self.target_coord = (self.position[0], self.position[1] - 1)
                         
-                    
-        
 
     def move(self):
         self.check_space()
+
+        #If the player is already moving, do not make another move
+        if len(self.action_queue) > 0: return
 
         #If not facing the correct direction, updates visual direction
         if self.visual_direction != self.direction:
@@ -74,7 +79,25 @@ class Player:
 
             if self.target_coord == None: return
 
+            #Adds steps to the action queue
+            for i in range(1, 17):
+                #Horizontal
+                if self.direction == 'left' or self.direction == 'right':
+
+                    if self.direction == 'left': i *= -1
+                    #Origin + Step Increment (distance / 64)
+
+                    self.action_queue.append( (self.coordinate_map[self.position][0] + ((self.size / 16) * i), self.coordinate_map[self.position][1]) ) #Tuple
+
+                if self.direction == 'up' or self.direction == 'down':
+
+                    if self.direction == 'up': i *= -1
+                    
+                    
+                    self.action_queue.append( (self.coordinate_map[self.position][0], self.coordinate_map[self.position][1] + ((self.size / 16) * i)) )
+
             self.position = self.target_coord
+
             self.check_space()
         
         self.direction = None    
@@ -316,6 +339,11 @@ class Map:
 
                 elif value == 4:
 
+                    if len(player.action_queue) > 0:
+
+                        x, y = player.action_queue[0]
+                        player.action_queue.pop(0)
+
                     if player.visual_direction == 'down' or player.visual_direction == 'up':
 
                         p5.image(dave_sprites[0], x, y, self.tile_size, self.tile_size)
@@ -342,7 +370,6 @@ class Map:
                             
                             p5.push()
 
-                            #TODO: make the color shift start working
                             p5.fill(255 * progress, 0, 0)
                             
                             # p5.fill(0)
@@ -554,7 +581,7 @@ def setup():
     maps = Map(test_map, 64)
 
     global dynamite_dave
-    dynamite_dave = Player((0, 0), maps.active_map)
+    dynamite_dave = Player((0, 0), maps.active_map, maps.coordinate_map, 64)
     
     global bomb_list
     bomb_list = []

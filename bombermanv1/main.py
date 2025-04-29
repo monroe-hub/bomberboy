@@ -27,6 +27,8 @@ class Player:
 
         rows, cols = self.active_map.shape
 
+        self.target_coord = None
+
         if self.direction == 'up':
 
             if 0 <= self.position[0] - 1 <= rows - 1:
@@ -59,7 +61,10 @@ class Player:
             if 0 <= self.position[1] - 1 <= cols - 1:
 
                     if self.active_map[self.position[0], self.position[1] - 1] == 0:
+                    
                         self.target_coord = (self.position[0], self.position[1] - 1)
+
+        
                         
 
     def move(self):
@@ -70,8 +75,11 @@ class Player:
 
         #If not facing the correct direction, updates visual direction
         if self.visual_direction != self.direction:
+
             self.visual_direction = self.direction
+
             if self.target_coord == None: return
+
             else: return
 
         #If move was invalid, refuses move
@@ -110,9 +118,10 @@ class Player:
 
 class Enemy(ABC):
 
-    def __init__(self, grid_pos, active_map, type=(6, 'crab')):
+    def __init__(self, grid_pos, active_map, coordinate_map, type=(6, 'crab')):
         
         self.active_map = active_map
+        self.coordinate_map = coordinate_map
 
         self.position = grid_pos
         self.direction = None 
@@ -121,13 +130,12 @@ class Enemy(ABC):
         self.target_coord = None
 
         self.health = 3
+        self.size = None
 
         self.type = type
         self.action = None
 
-        
-
-        
+        self.action_queue = []
 
 
     @abstractmethod
@@ -138,6 +146,8 @@ class Enemy(ABC):
     def check_space(self):
 
         rows, cols = self.active_map.shape
+
+        self.target_coord = None
 
         if self.direction == 'up':
 
@@ -175,15 +185,17 @@ class Enemy(ABC):
 
     @abstractmethod      
     def move(self):
-        # if self.direction != None: self.visual_direction = self.direction
-
+        
         self.check_space()
+
+        #If the player is already moving, do not make another move
+        if len(self.action_queue) > 0: return
 
         #If not facing the correct direction, updates visual direction
         if self.visual_direction != self.direction:
+
             self.visual_direction = self.direction
 
-            #Target coord can begin uninitialized; this handles that
             if self.target_coord == None: return
 
             else: return
@@ -193,33 +205,57 @@ class Enemy(ABC):
 
             if self.target_coord == None: return
 
+            #Adds steps to the action queue
+            for i in range(1, 17):
+                #Horizontal
+                if self.direction == 'left' or self.direction == 'right':
+
+                    if self.direction == 'left': i *= -1
+                    #Origin + Step Increment (distance / 64)
+
+                    self.action_queue.append( (self.coordinate_map[self.position][0] + ((self.size / 16) * i), self.coordinate_map[self.position][1]) ) #Tuple
+
+                if self.direction == 'up' or self.direction == 'down':
+
+                    if self.direction == 'up': i *= -1
+                    
+                    
+                    self.action_queue.append( (self.coordinate_map[self.position][0], self.coordinate_map[self.position][1] + ((self.size / 16) * i)) )
+
             self.position = self.target_coord
+
             self.check_space()
         
         self.direction = None    
 
 class Crab(Enemy):
 
-    def __init__(self, grid_pos, active_map):
-        super().__init__(grid_pos, active_map, type=(6, 'crab'))
+    def __init__(self, grid_pos, active_map, coordinate_map):
+        super().__init__(grid_pos, active_map, coordinate_map, type=(6, 'crab'))
 
         self.last_move_time = p5.millis()
         self.move_delay = 1000  # milliseconds between moves (1 second)
 
+        self.size = 64
+
         side_spaces = 0
         up_spaces = 0
 
-        for x in range(-1, 1):
+        for x in [-1, 1]:
 
-            if self.active_map[grid_pos[0] + x, grid_pos[1]] == 0:
+            if x < 0 or x > self.active_map.shape[0]:
 
-                side_spaces += 1
+                if self.active_map[grid_pos[0] + x, grid_pos[1]] == 0:
 
-        for y in range(-1, 1):
+                    side_spaces += 1
 
-            if self.active_map[grid_pos[0], grid_pos[1] + y] == 0:
+        for y in [-1, 1]:
 
-                up_spaces += 1
+            if y < 0 or y > self.active_map.shape[1]:
+
+                if self.active_map[grid_pos[0], grid_pos[1] + y] == 0:
+
+                    up_spaces += 1
 
         if side_spaces >= up_spaces:
 
@@ -243,9 +279,9 @@ class Crab(Enemy):
             return
         else:
 
-            seed = p5.random_int(1, 3)
+            seed = p5.random_int(1, 11)
 
-            if seed < 3:
+            if seed <= 3:
                 self.action = None
             else: 
                 self.action = 'move'
@@ -383,6 +419,11 @@ class Map:
                     for enemy in enemy_list:
                         
                         if enemy.position == (row_index, col_index):
+
+                            if len(enemy.action_queue) > 0:
+
+                                x, y = enemy.action_queue[0]
+                                enemy.action_queue.pop(0)
                         
                             p5.push()
 
@@ -590,7 +631,7 @@ def setup():
     enemy_list = []
 
     for enemy_coords in enemy_coordinates:
-        enemy_list.append(Crab(enemy_coords, active_map=maps.active_map))
+        enemy_list.append(Crab(enemy_coords, active_map=maps.active_map, coordinate_map=maps.coordinate_map))
 
     
 

@@ -62,10 +62,7 @@ class Player:
 
                     if self.active_map[self.position[0], self.position[1] - 1] == 0:
                     
-                        self.target_coord = (self.position[0], self.position[1] - 1)
-
-        
-                        
+                        self.target_coord = (self.position[0], self.position[1] - 1)                
 
     def move(self):
         self.check_space()
@@ -183,6 +180,8 @@ class Enemy(ABC):
                     if self.active_map[self.position[0], self.position[1] - 1] == 0:
                         self.target_coord = (self.position[0], self.position[1] - 1)
 
+        #TODO add generalized hostile collision logic to injure player
+
     @abstractmethod      
     def move(self):
         
@@ -234,7 +233,7 @@ class Crab(Enemy):
         super().__init__(grid_pos, active_map, coordinate_map, type=(6, 'crab'))
 
         self.last_move_time = p5.millis()
-        self.move_delay = 1000  # milliseconds between moves (1 second)
+        self.move_delay = 800  # milliseconds between moves (1 second)
 
         self.size = 64
 
@@ -257,7 +256,7 @@ class Crab(Enemy):
 
                     up_spaces += 1
 
-        if side_spaces >= up_spaces:
+        if side_spaces <= up_spaces:
 
             self.crab_walk = 'horizontal'
         else:
@@ -633,19 +632,20 @@ def setup():
     for enemy_coords in enemy_coordinates:
         enemy_list.append(Crab(enemy_coords, active_map=maps.active_map, coordinate_map=maps.coordinate_map))
 
-    
-
-
 def draw():
+    game_end_flag = None
+
     p5.background(255)
     
     maps.refresh_map(dynamite_dave, bomb_list=bomb_list, enemy_list=enemy_list)
     maps.render_map(dynamite_dave)
     maps.render_hud(dynamite_dave)
 
-    #TODO: dave must make movements every couple of frames, with his actions delayed until the first one completes.
-    #Do this through internal object timers.
-    #player.action_delay
+    if dynamite_dave.health == 0:
+        game_end_flag = 'loss'
+
+    if game_end_flag is not None:
+        p5.no_loop()
 
 
 def key_pressed():

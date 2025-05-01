@@ -27,42 +27,35 @@ class Player:
 
         rows, cols = self.active_map.shape
 
+        coord = None
+
         self.target_coord = None
 
         if self.direction == 'up':
 
-            if 0 <= self.position[0] - 1 <= rows - 1:
-                                                                                        
-                    if self.active_map[self.position[0] - 1, self.position[1]] == 0:
-
-                        self.target_coord = (self.position[0] - 1, self.position[1])
-                        
-
+            if 0 <= self.position[0] - 1 <= rows - 1:         
+                                                                        
+                    coord = (self.position[0] - 1, self.position[1])
         if self.direction == 'down':
 
             if 0 <= self.position[0] + 1 <= rows - 1:
 
-                    if self.active_map[self.position[0] + 1, self.position[1]] == 0:
-
-                        self.target_coord = (self.position[0] + 1, self.position[1])
-                        
-            
+                    coord = (self.position[0] + 1, self.position[1])
         if self.direction == 'right':
 
             if 0 <= self.position[1] + 1 <= cols - 1:
 
-                    if self.active_map[self.position[0], self.position[1] + 1] == 0:
-
-                        self.target_coord = (self.position[0], self.position[1] + 1)
-                        
-            
+                    coord = (self.position[0], self.position[1] + 1)
         if self.direction == 'left':
 
             if 0 <= self.position[1] - 1 <= cols - 1:
 
-                    if self.active_map[self.position[0], self.position[1] - 1] == 0:
-                    
-                        self.target_coord = (self.position[0], self.position[1] - 1)                
+                    coord =  (self.position[0], self.position[1] - 1)
+
+        if coord is not None:
+
+            if self.active_map[coord[0], coord[1]] == 0:
+                self.target_coord = coord              
 
     def move(self):
         self.check_space()
@@ -121,7 +114,7 @@ class Enemy(ABC):
         self.coordinate_map = coordinate_map
 
         self.position = grid_pos
-        self.direction = None 
+        self.direction = 'down' 
         self.visual_direction = 'down'
 
         self.target_coord = None
@@ -134,6 +127,8 @@ class Enemy(ABC):
 
         self.action_queue = []
 
+        self.is_alive = True
+
 
     @abstractmethod
     def decide_action(self):
@@ -144,44 +139,39 @@ class Enemy(ABC):
 
         rows, cols = self.active_map.shape
 
+        coord = None
+
         self.target_coord = None
 
         if self.direction == 'up':
 
-            if 0 <= self.position[0] - 1 <= rows - 1:
-                                                                                        
-                    if self.active_map[self.position[0] - 1, self.position[1]] == 0:
-
-                        self.target_coord = (self.position[0] - 1, self.position[1])
-            
-
+            if 0 <= self.position[0] - 1 <= rows - 1:         
+                                                                        
+                    coord = (self.position[0] - 1, self.position[1])
         if self.direction == 'down':
 
             if 0 <= self.position[0] + 1 <= rows - 1:
 
-                    if self.active_map[self.position[0] + 1, self.position[1]] == 0:
-
-                        self.target_coord = (self.position[0] + 1, self.position[1])
-                        
-            
+                    coord = (self.position[0] + 1, self.position[1])
         if self.direction == 'right':
 
             if 0 <= self.position[1] + 1 <= cols - 1:
 
-                    if self.active_map[self.position[0], self.position[1] + 1] == 0:
-
-                        self.target_coord = (self.position[0], self.position[1] + 1)
-                        
-            
+                    coord = (self.position[0], self.position[1] + 1)
         if self.direction == 'left':
 
             if 0 <= self.position[1] - 1 <= cols - 1:
 
-                    if self.active_map[self.position[0], self.position[1] - 1] == 0:
-                        self.target_coord = (self.position[0], self.position[1] - 1)
+                    coord =  (self.position[0], self.position[1] - 1)
+
+        if coord is not None:
+
+            if self.active_map[coord[0], coord[1]] == 0:
+                self.target_coord = coord
 
         #TODO add generalized hostile collision logic to injure player
-
+        #do not interrupt an action queue, animation must be smooth
+        
     @abstractmethod      
     def move(self):
         
@@ -225,7 +215,7 @@ class Enemy(ABC):
 
             self.check_space()
         
-        self.direction = None    
+        self.direction = None
 
 class Crab(Enemy):
 
@@ -236,6 +226,8 @@ class Crab(Enemy):
         self.move_delay = 800  # milliseconds between moves (1 second)
 
         self.size = 64
+
+        self.health = 1
 
         side_spaces = 0
         up_spaces = 0
@@ -307,6 +299,7 @@ class Bomb:
         self.time_left = 4000  
 
     def explosion_check(self):
+        """Checks if it has been long enough to explode"""
 
         if p5.millis() - self.spawn_time >= self.time_left:
             return True
@@ -343,7 +336,7 @@ class Map:
                 x = self.init_coords[0] + col_index * self.tile_size
                 y = self.init_coords[1] + row_index * self.tile_size
 
-                #TODO: Decide if converting the array to an object array is worthwhile.
+                #Decide if converting the array to an object array is worthwhile.
                 #If int, convert to list for iterating
                 # values = [position] if isinstance(position, int) else position
 
@@ -442,7 +435,6 @@ class Map:
     def refresh_map(self, player, bomb_list, enemy_list):
         """Recalculates map logic, updating it within the object. Requires a player object as input for various calculations."""
 
-
         for row_index in range(0, self.active_map.shape[0]):
             for col_index in range(0, self.active_map.shape[1]):
 
@@ -454,8 +446,15 @@ class Map:
 
                 for i, enemy in enumerate(enemy_list):
 
+                    #Death checks
+                    if enemy.health == 0: enemy.is_alive = False
+
+                    if enemy.is_alive == False:
+                        enemy_list.pop(i)
+
                     if enemy.position == (x, y):
 
+                        #Assigns the space on the map the given enemy type number
                         self.active_map[x, y] = enemy.type[0]
 
                     enemy.decide_action()
@@ -491,6 +490,9 @@ class Map:
 
                                     if self.active_map[x + i, y] == 4: player.health -= 1
 
+                                    for enemy in enemy_list:
+                                        if (x + i, y) == enemy.position: enemy.health -= 1
+
                                     self.active_map[x + i, y] = 0
                                     p5.circle(self.coordinate_map[x + i, y][0], self.coordinate_map[x + i, y][1], self.tile_size)
 
@@ -500,6 +502,9 @@ class Map:
 
                                     if self.active_map[x - i, y] == 4: player.health -= 1
 
+                                    for enemy in enemy_list:
+                                        if (x - i, y) == enemy.position: enemy.health -= 1
+
                                     self.active_map[x - i, y] = 0
                                     p5.circle(self.coordinate_map[x - i, y][0], self.coordinate_map[x - i, y][1], self.tile_size)
 
@@ -508,7 +513,10 @@ class Map:
                                 if self.active_map[x, y + i] != 1 and (0 <= y + i <= self.active_map.shape[1] - 1):
                                     
                                     if self.active_map[x, y + i] == 4: player.health -= 1
-                                    
+
+                                    for enemy in enemy_list:
+                                        if (x, y + i) == enemy.position: enemy.health -= 1
+                                            
                                     self.active_map[x, y + i] = 0
                                     p5.circle(self.coordinate_map[x , y + i][0], self.coordinate_map[x, y + i][1], self.tile_size)
 
@@ -517,6 +525,9 @@ class Map:
                                 if self.active_map[x, y - i] != 1 and (0 <= y - i <= self.active_map.shape[1] - 1):
 
                                     if self.active_map[x, y - i] == 4: player.health -= 1
+
+                                    for enemy in enemy_list:
+                                        if (x, y - i) == enemy.position: enemy.health -= 1
 
                                     self.active_map[x, y - i] = 0
                                     p5.circle(self.coordinate_map[x, y - i][0], self.coordinate_map[x, y - i][1], self.tile_size)
@@ -530,6 +541,7 @@ class Map:
                             bomb_list.pop(i-1)
 
     def render_hud(self, player):
+        """Draws Player info in the top left of the screen"""
 
         for i in range(0, player.health):
             p5.push()
@@ -538,6 +550,7 @@ class Map:
 
 
 def generate_base_map(size=(10, 10)):
+    """Creates initial map"""
 
     array = np.zeros(shape=size)
     enemy_coordinates = []
@@ -566,7 +579,7 @@ def generate_base_map(size=(10, 10)):
     return array, enemy_coordinates
 
 def load_image(file_path):
-    #Loads an image without crashing script
+    """Loads an image without crashing script"""
     try:
         image = p5.load_image(file_path)
         return image

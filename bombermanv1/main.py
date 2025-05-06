@@ -23,6 +23,8 @@ class Player:
 
         self.action_queue = []
 
+        self.collision = False
+
     def check_space(self):
 
         rows, cols = self.active_map.shape
@@ -55,7 +57,18 @@ class Player:
         if coord is not None:
 
             if self.active_map[coord[0], coord[1]] == 0:
-                self.target_coord = coord              
+                self.target_coord = coord    
+                self.no_move = False
+
+            else: self.no_move = True
+
+            if self.active_map[coord[0], coord[1]] >= 6:
+
+                self.target_coord = coord
+                self.collision = True
+
+            else: self.collision = False #Ensures the collision flag isn't kept after turning away
+
 
     def move(self):
         self.check_space()
@@ -68,35 +81,65 @@ class Player:
 
             self.visual_direction = self.direction
 
-            if self.target_coord == None: return
+            return
+            # if self.target_coord == None: return
 
-            else: return
+            # else: return
 
         #If move was invalid, refuses move
         if self.visual_direction == self.direction:
 
-            if self.target_coord == None: return
-
             #Adds steps to the action queue
-            for i in range(1, 17):
-                #Horizontal
-                if self.direction == 'left' or self.direction == 'right':
+            if self.no_move == False or self.collision == True:
 
-                    if self.direction == 'left': i *= -1
-                    #Origin + Step Increment (distance / 64)
+                for i in range(1, 17):
+                    #Horizontal
+                    if self.direction == 'left' or self.direction == 'right':
 
-                    self.action_queue.append( (self.coordinate_map[self.position][0] + ((self.size / 16) * i), self.coordinate_map[self.position][1]) ) #Tuple
+                        if self.direction == 'left': i *= -1
+                        #Origin + Step Increment (distance / 16)
 
-                if self.direction == 'up' or self.direction == 'down':
+                        self.action_queue.append( (self.coordinate_map[self.position][0] + ((self.size / 16) * i), self.coordinate_map[self.position][1]) ) #Tuple
 
-                    if self.direction == 'up': i *= -1
-                    
-                    
-                    self.action_queue.append( (self.coordinate_map[self.position][0], self.coordinate_map[self.position][1] + ((self.size / 16) * i)) )
+                    if self.direction == 'up' or self.direction == 'down':
 
-            self.position = self.target_coord
+                        if self.direction == 'up': i *= -1
+                        
+                        
+                        self.action_queue.append( (self.coordinate_map[self.position][0], self.coordinate_map[self.position][1] + ((self.size / 16) * i)) )
 
-            self.check_space()
+            if self.collision == True:
+
+                destination = self.coordinate_map[self.target_coord[0], self.target_coord[1]]
+
+                #Plays reverse animation returning the player to their origin
+                for i in range(1, 9):
+                    #Horizontal
+                    if self.direction == 'left' or self.direction == 'right':
+
+                        if self.direction == 'left': i *= -1
+                        #Destination - Step Increment (distance / 8)
+
+                        self.action_queue.append( (destination[0] - ((self.size / 8) * i), destination[1]) ) #Tuple
+
+                    if self.direction == 'up' or self.direction == 'down':
+
+                        if self.direction == 'up': i *= -1
+                        
+                        
+                        self.action_queue.append( (destination[0], destination[1] - ((self.size / 8) * i)) )
+
+                self.collision = False #Resets collision flag
+                self.health -= 1
+
+                # self.check_space()
+
+                return
+
+            if self.target_coord == None: return
+            else: self.position = self.target_coord
+
+            # self.check_space()
         
         self.direction = None    
         
@@ -200,7 +243,7 @@ class Enemy(ABC):
                 if self.direction == 'left' or self.direction == 'right':
 
                     if self.direction == 'left': i *= -1
-                    #Origin + Step Increment (distance / 64)
+                    #Origin + Step Increment (distance / 16)
 
                     self.action_queue.append( (self.coordinate_map[self.position][0] + ((self.size / 16) * i), self.coordinate_map[self.position][1]) ) #Tuple
 
@@ -278,7 +321,6 @@ class Crab(Enemy):
                 self.action = 'move'
                 self.direction = directions[p5.random_int(0, 1)]
             
-
     def check_space(self):
         return super().check_space()
         

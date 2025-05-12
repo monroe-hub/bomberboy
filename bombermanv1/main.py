@@ -134,24 +134,24 @@ class Player:
 
                 # self.check_space()
 
-                return
+                return 
 
             if self.target_coord == None: return
             else: self.position = self.target_coord
 
-            # self.check_space()
+            self.check_space()
         
         self.direction = None    
         
 
     def place_bomb(self, bomb_list):
 
-        if self.target_coord != None and self.active_map[self.target_coord] == 0:\
-            bomb_list.append(Bomb(self.target_coord))
+        if self.target_coord != None and self.active_map[self.target_coord] == 0:
+            bomb_list.append( Bomb(self.target_coord) )
 
 class Enemy(ABC):
 
-    def __init__(self, grid_pos, active_map, coordinate_map, type=(6, 'crab')):
+    def __init__(self, grid_pos, active_map, coordinate_map, player, type=(6, 'crab')):
         
         self.active_map = active_map
         self.coordinate_map = coordinate_map
@@ -171,14 +171,50 @@ class Enemy(ABC):
         self.action_queue = []
 
         self.is_alive = True
+        self.is_stunned = False
 
+        self.no_move = False
+        self.collision = False
 
-    @abstractmethod
-    def decide_action(self):
-        pass
+        self.player = player
+
+    
+    def decide_action(self, directions = ['left', 'right', 'up', 'down']):
+
+        self.directions = directions
+
+        current_time = p5.millis()
+        timer = current_time - self.last_move_time 
+
+        if self.is_stunned == True:
+            if current_time >= self.stun_end:
+                self.is_stunned = False #Stun has ended, remove
+            else:
+                self.action = None #Wait
+
+                return
+
+        if timer < self.move_delay: self.action = None  # Wait
+
+        else:
+
+            seed = p5.random_int(1, 11)
+
+            if seed <= 3:
+                self.action = None
+
+                return #The returns are present for clarity
+            
+            else: 
+                self.action = 'move'
+                self.direction = directions[p5.random_int(0, len(directions) - 1)]
         
-    @abstractmethod
+   
     def check_space(self):
+        #Resetting flags
+        self.no_move = False
+        self.collision = False
+        self.target_coord = None
 
         rows, cols = self.active_map.shape
 
@@ -209,35 +245,38 @@ class Enemy(ABC):
 
         if coord is not None:
 
-            if self.active_map[coord[0], coord[1]] == 0:
-                self.target_coord = coord
+            if self.active_map[coord[0], coord[1]] == 0: #Empty space checking
+                self.target_coord = coord    
+                self.no_move = False
 
-        #TODO add generalized hostile collision logic to injure player
-        #do not interrupt an action queue, animation must be smooth
-        
-    @abstractmethod      
+            else: self.no_move = True
+
+            if self.active_map[coord[0], coord[1]] == 4:
+
+                self.target_coord = coord
+                self.collision = True
+
+            else: self.collision = False #Ensures the collision flag isn't kept after turning away
+           
     def move(self):
         
         self.check_space()
 
-        #If the player is already moving, do not make another move
-        if len(self.action_queue) > 0: return
+        self.last_move_time = p5.millis()
+
+        #If the player is already moving, or stunned, do not make another move
+        if len(self.action_queue) > 0 or self.is_stunned: return
 
         #If not facing the correct direction, updates visual direction
         if self.visual_direction != self.direction:
 
             self.visual_direction = self.direction
 
-            if self.target_coord == None: return
+            return        
 
-            else: return
+        #Adds steps to the action queue
+        if self.no_move == False or self.collision == True:
 
-        #If move was invalid, refuses move
-        if self.visual_direction == self.direction:
-
-            if self.target_coord == None: return
-
-            #Adds steps to the action queue
             for i in range(1, 17):
                 #Horizontal
                 if self.direction == 'left' or self.direction == 'right':
@@ -254,16 +293,52 @@ class Enemy(ABC):
                     
                     self.action_queue.append( (self.coordinate_map[self.position][0], self.coordinate_map[self.position][1] + ((self.size / 16) * i)) )
 
-            self.position = self.target_coord
+        if self.collision == True:
 
-            self.check_space()
-        
+            destination = self.coordinate_map[self.target_coord[0], self.target_coord[1]]
+
+            #Plays reverse animation returning the player to their origin
+            for i in range(1, 9):
+                #Horizontal
+                if self.direction == 'left' or self.direction == 'right':
+
+                    if self.direction == 'left': i *= -1
+                    #Destination - Step Increment (distance / 8)
+
+                    self.action_queue.append( (destination[0] - ((self.size / 8) * i), destination[1]) ) #Tuple
+
+                if self.direction == 'up' or self.direction == 'down':
+
+                    if self.direction == 'up': i *= -1
+                    
+                    
+                    self.action_queue.append( (destination[0], destination[1] - ((self.size / 8) * i)) )
+
+            self.collision = False #Resets collision flag
+
+            #Damages Player
+            self.player.health -= 1
+            self.apply_stun()
+
+            # self.check_space()
+
+            return
+
+        if self.target_coord == None: return
+        else: self.position = self.target_coord
+
+        # self.check_space()
         self.direction = None
+
+    def apply_stun(self, duration = 1000):
+
+        self.is_stunned = True
+        self.stun_end = p5.millis() + duration        
 
 class Crab(Enemy):
 
-    def __init__(self, grid_pos, active_map, coordinate_map):
-        super().__init__(grid_pos, active_map, coordinate_map, type=(6, 'crab'))
+    def __init__(self, grid_pos, active_map, coordinate_map, player):
+        super().__init__(grid_pos, active_map, coordinate_map, player, type=(6, 'crab'))
 
         self.last_move_time = p5.millis()
         self.move_delay = 800  # milliseconds between moves (1 second)
@@ -271,6 +346,8 @@ class Crab(Enemy):
         self.size = 64
 
         self.health = 1
+
+        # self.player = player
 
         side_spaces = 0
         up_spaces = 0
@@ -304,29 +381,22 @@ class Crab(Enemy):
         if self.crab_walk == 'vertical':
             directions = ['up', 'down']
 
-
-        #This checks if a half second has passed since the last move
-        current_time = p5.millis()
-
-        if current_time - self.last_move_time < self.move_delay:
-            self.action = None  # Wait
-            return
-        else:
-
-            seed = p5.random_int(1, 11)
-
-            if seed <= 3:
-                self.action = None
-            else: 
-                self.action = 'move'
-                self.direction = directions[p5.random_int(0, 1)]
+        super().decide_action(directions=directions)
             
     def check_space(self):
         return super().check_space()
         
     def move(self):
-        self.last_move_time = p5.millis()
-        return super().move()
+
+        super().move()
+
+        if self.collision == True: 
+            print("crab collision !")
+            return
+    
+    def apply_stun(self, duration=1000):
+        super().apply_stun(duration)
+
 
 class Bomb:
 
@@ -459,12 +529,19 @@ class Map:
                                 x, y = enemy.action_queue[0]
                                 enemy.action_queue.pop(0)
                         
-                            p5.push()
+                            
 
-                            p5.image(crab_sprite, x, y, self.tile_size, self.tile_size)
-                            # p5.fill(255, 0, 0)
-                            # p5.circle(x, y, self.tile_size)
-                            p5.pop()
+                            if enemy.type[1] == 'crab':
+                                p5.push()
+
+                                if enemy.is_stunned == False: 
+                                    p5.image(crab_sprite, x, y, self.tile_size, self.tile_size)
+                                else:
+                                    p5.image(crab_stun_sprite, x, y, self.tile_size, self.tile_size)
+
+                                p5.pop()
+                            
+                            
 
                     p5.text("6", x, y)
 
@@ -513,7 +590,7 @@ class Map:
 
                                 self.active_map[previous_pos[0], previous_pos[1]] = 0
 
-                for i, bomb in enumerate(bomb_list):
+                for bomb in bomb_list:
                     
                     if bomb.grid_pos == (x, y):
 
@@ -522,6 +599,7 @@ class Map:
                         self.active_map[x, y] = 5
 
                         if bomb.explosion_check():
+
                             for i in range(0, bomb.bomb_strength + 1):
 
                                 #This looks digusting but essentially all it does is loop through the neighboring directions, and blow em up
@@ -580,7 +658,7 @@ class Map:
 
                                 p5.pop()
 
-                            bomb_list.pop(i-1)
+                            bomb_list.remove(bomb)
 
     def render_hud(self, player):
         """Draws Player info in the top left of the screen"""
@@ -632,7 +710,7 @@ def load_image(file_path):
 
 def load_assets():
     """Attempts to load all relevant assets (images, etc.) and places them into the global namespace."""
-    global break_brick, steel_brick, dave_sprites, crab_sprite, heart_image
+    global break_brick, steel_brick, dave_sprites, crab_sprite, crab_stun_sprite, heart_image
 
     image_folder = path.join("bombermanv1", "assets")
     
@@ -646,6 +724,7 @@ def load_assets():
 
 
     crab_sprite = load_image(image_folder + path.sep + "crab.png")
+    crab_stun_sprite = load_image(image_folder + path.sep + "stunned_crab.png")
 
     heart_image = load_image(image_folder + path.sep + "heart.png")
 
@@ -685,7 +764,7 @@ def setup():
     enemy_list = []
 
     for enemy_coords in enemy_coordinates:
-        enemy_list.append(Crab(enemy_coords, active_map=maps.active_map, coordinate_map=maps.coordinate_map))
+        enemy_list.append(Crab(enemy_coords, active_map=maps.active_map, coordinate_map=maps.coordinate_map, player=dynamite_dave))
 
 def draw():
     game_end_flag = None
@@ -733,6 +812,9 @@ def key_pressed():
         dynamite_dave.place_bomb(bomb_list=bomb_list)
         return
     
+        #TODO: Boundary errors? destination = self.coordinate_map[self.target_coord[0], self.target_coord[1]] TypeError: 'NoneType' object is not subscriptable
+        #TODO: Crabs aren't being stunned!
+
     #Debug statement, keep in mind that the coordinate here will not be updated yet
     # print(f"Keypress: |{key}| Direction: {bomberboy.direction} Coordinate: {bomberboy.position}")
     # print(bomberboy.target_coord, len(bomb_list))
